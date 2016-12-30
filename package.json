@@ -1,0 +1,37 @@
+{
+  "name": "nesify",
+  "version": "0.0.1",
+  "description": "Squishes an image to NES palette limitations",
+  "main": "index.js",
+  "bin": {
+    "nesify": "./cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "nes",
+    "8-bit",
+    "canvas",
+    "pixel",
+    "image"
+  ],
+  "author": "Keith McKnight",
+  "license": "ISC",
+  "dependencies": {
+    "canvas": "^1.6.2",
+    "chalk": "^1.1.3",
+    "color-functions": "^1.1.0",
+    "ditherjs": "^0.9.1",
+    "minimist": "^1.2.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.21.0",
+    "babel-eslint": "^7.1.1",
+    "babel-preset-es2015": "^6.18.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "eslint": "^3.12.2",
+    "eslint-config-airbnb-base": "^11.0.0",
+    "eslint-plugin-import": "^2.2.0"
+  }
+}
