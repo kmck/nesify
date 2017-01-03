@@ -7,16 +7,17 @@ import path from 'path';
 import url from 'url';
 
 import chalk from 'chalk';
+import expandTilde from 'expand-tilde';
 import minimist from 'minimist';
 
 import nesify from '.';
 
 const argv = minimist(process.argv.slice(2));
 const {
-  srcUrl = 'https://upload.wikimedia.org/wikipedia/en/0/0c/FaceOff_(1997_film)_poster.jpg',
-  outPrefix = 'nesified-', // `${Date.now()_}`,
-  outSrcFile = path.join(process.cwd(), 'out', `${outPrefix}src-${path.basename(srcUrl)}`),
-  outFile = path.join(process.cwd(), 'out', `${outPrefix}${path.parse(srcUrl).name}.png`),
+  srcUrl = '',
+  srcFile = '',
+  outSrcFile = path.join(process.cwd(), 'out', `nesify-src-img${path.extname(srcUrl || srcFile)}`),
+  outFile = path.join(process.cwd(), 'out', 'nesify.png'),
   ...restArgs
 } = argv;
 
@@ -60,9 +61,35 @@ const readImageToBuffer = imageUrl => new Promise((resolve, reject) => {
     .end();
 });
 
+/**
+ * Reads an image from disk and converts it to a buffer
+ *
+ * @param  {string} filePath - path to the file
+ * @return {[type]}          [description]
+ */
+const readFileToBuffer = filePath => new Promise((resolve, reject) => {
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      reject(err);
+      return;
+    }
+    resolve(data);
+  });
+});
+
 // Read the input URL and convert it inline
-console.log(`Reading image from ${chalk.magenta(srcUrl)}`);
-readImageToBuffer(srcUrl)
+let srcBuffer;
+if (srcUrl) {
+  console.log(`Reading image URL from ${chalk.magenta(srcUrl)}`);
+  srcBuffer = readImageToBuffer(srcUrl);
+} else if (srcFile) {
+  console.log(`Reading image file from ${chalk.magenta(srcFile)}`);
+  srcBuffer = readFileToBuffer(expandTilde(srcFile));
+} else {
+  srcBuffer = Promise.reject(`Please specify a ${chalk.cyan(srcUrl)} or ${chalk.cyan(srcFile)}`);
+}
+
+srcBuffer
   .then(buffer => new Promise((resolve) => {
     fs.writeFile(outSrcFile, buffer, (err) => {
       if (err) {

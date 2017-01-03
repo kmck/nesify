@@ -1,5 +1,11 @@
 /* eslint-disable quote-props */
 
+import memoize from 'lodash/memoize';
+import invert from 'lodash/invert';
+import { rgb2hex } from 'color-functions';
+
+import { comparatorAscending } from './sort';
+
 /**
  * The NES palette is divided into 4 subpalettes of 4 colors each, one of which is used for a common
  * background/transparent color.
@@ -16,7 +22,7 @@ export const CANONICAL_BLACK = '0f';
 /**
  * This maps the internal color enumeration to hex colors.
  */
-export const palette = {
+export const nesPalette = {
   '00': '#7c7c7c',
   '01': '#0923f8',
   '02': '#0417b9',
@@ -84,6 +90,12 @@ export const palette = {
 };
 
 /**
+ * This maps hex colors back to the NES enumeration, respecting the canonical black
+ */
+export const nesPaletteInverted = invert(nesPalette);
+nesPaletteInverted[nesPalette[CANONICAL_BLACK]] = CANONICAL_BLACK;
+
+/**
  * Converts a color in whatever format to the [r,g,b] format required by DitherJS
  *
  * @param  {Array|Object|string|number} anyColor - source color
@@ -105,7 +117,7 @@ export function normalizeColor(anyColor) {
   }
 
   if (typeof color === 'string') {
-    color = color.toLowerCase().replace(/[^0-9a-f]/, '');
+    color = color.toLowerCase().replace(/[^0-9a-f]/g, '');
     if (color.length === 3) {
       color = color.split('').map(v => v + v).join('');
     }
@@ -122,21 +134,68 @@ export function normalizeColor(anyColor) {
 }
 
 /**
- * DitherJS just wants a list of [r,g,b] values for colors
+ * Normalizes a color palette for use by DitherJS
  *
- * @param {Array} colorKeys - an array of NES palette keys
- * @return {Array} all [r,g,b] colors to use in the palette
+ * @param  {Array} palette - a bunch of colors
+ * @return {Array} array of colors in [r,g,b] format
  */
-export function generatePalette(colorKeys) {
-  return colorKeys.map(key => normalizeColor(palette[key]));
+export function normalizeDitherPalette(palette) {
+  return palette.map(color => normalizeColor(color));
+}
+
+/**
+ * Converts a color in whatever format to a #rrggbb hex color
+ *
+ * @param  {Array|Object|string|number} anyColor - source color
+ * @return {String} #rrggbb color
+ */
+export function normalizeColorHex(anyColor) {
+  return `#${rgb2hex(...normalizeColor(anyColor))}`;
+}
+
+/**
+ * Calculates the distance between two colors
+ *
+ * @param  {[type]} colorA [description]
+ * @param  {[type]} colorB [description]
+ * @return {number} distance between the two colors
+ */
+export function colorDistance(a, b) {
+  const colorA = normalizeColor(a);
+  const colorB = normalizeColor(b);
+  return Math.sqrt((
+    ((colorA[0] - colorB[0]) ** 2) +
+    ((colorA[1] - colorB[1]) ** 2) +
+    ((colorB[2] - colorB[2]) ** 2)
+  ));
 }
 
 /**
  * Standard palette of unique NES colors that DitherJS can use
  */
-export const nesPalette = generatePalette((
-  [palette[CANONICAL_BLACK]]
-    .concat(Object.keys(palette).filter(key => palette[key] !== '#000000'))
-));
+export const nesColors = Object.keys(nesPaletteInverted)
+  .sort((a, b) => comparatorAscending(a !== '#000000', b !== '#000000'));
+
+/**
+ * Gets the nearest NES palette match for a given color
+ */
+export const nesColorMatch = memoize((findColor) => {
+  const hex = normalizeColorHex(findColor);
+
+  // Exact match
+  if (hex in nesPaletteInverted) {
+    return nesPaletteInverted[hex];
+  }
+
+  // Look for the closest color
+  const distances = Object.keys(nesPaletteInverted)
+    .map(nesHex => ({
+      key: nesPaletteInverted[nesHex],
+      distance: colorDistance(hex, nesHex),
+    }))
+    .sort((a, b) => comparatorAscending(a.distance, b.distance));
+
+  return distances[0].key;
+});
 
 export default nesPalette;
